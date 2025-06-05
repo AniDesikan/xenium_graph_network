@@ -1,0 +1,193 @@
+# =============================================================================
+# KEEP ONLY CODE AND DOCUMENTATION FILES
+# =============================================================================
+
+# Ignore everything by default
+*
+
+# Allow Python files
+!*.py
+
+# Allow Markdown files
+!*.md
+
+# Allow text files
+!*.txt
+
+# Allow common project configuration files
+!requirements.txt
+!README.md
+!LICENSE
+!.gitignore
+
+# =============================================================================
+# EXPLICITLY IGNORE LARGE FILES AND OUTPUTS
+# =============================================================================
+
+# Data files
+*.csv
+*.h5
+*.hdf5
+*.parquet
+*.tsv
+*.xlsx
+*.xls
+
+# Images and visualizations
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.tif
+*.tiff
+*.ome.tif
+
+# HTML outputs and visualizations
+*.html
+gnn_visualization/
+scrna_gnn_visualization/
+spatial_xenium_visualization/
+
+# Model files
+*.pt
+*.pth
+*.pkl
+*.pickle
+*.joblib
+
+# Large numpy/scipy files
+*.npy
+*.npz
+*.mat
+
+# Compressed files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Video files
+*.mp4
+*.avi
+*.mov
+
+# =============================================================================
+# SYSTEM AND IDE FILES
+# =============================================================================
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Spyder
+.spyderproject
+.spyproject
+
+# Rope
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# =============================================================================
+# OPERATING SYSTEM FILES
+# =============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.nfs*
+
+# =============================================================================
+# ENVIRONMENT AND VIRTUAL ENVIRONMENTS
+# =============================================================================
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.env
+
+# Conda
+.conda/
+
+# =============================================================================
+# LOGS AND TEMPORARY FILES
+# =============================================================================
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.pytest_cache/
+
+# =============================================================================
+# ALLOW DIRECTORIES (but contents still filtered by above rules)
+# =============================================================================
+
+# Allow all directories to be tracked (contents filtered by file extensions)
+!*/ 
