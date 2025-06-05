@@ -2,7 +2,7 @@
 
 A comprehensive pipeline integrating **single-cell RNA sequencing**, **spatial transcriptomics (Xenium)**, and **whole slide image analysis** using Graph Neural Networks for cancer subtype classification.
 
-## 🎯 Project Overview
+## Project Overview
 
 This project implements state-of-the-art Graph Neural Networks to integrate multi-modal cancer data:
 
@@ -11,7 +11,7 @@ This project implements state-of-the-art Graph Neural Networks to integrate mult
 3. **Whole slide image analysis** → Tissue morphology
 4. **Multi-modal integration** → Cancer subtype prediction
 
-## 📊 Dataset: GSE243280
+## Dataset: GSE243280
 
 **High resolution mapping of the tumor microenvironment using integrated single-cell, spatial and in situ analysis**
 
@@ -26,7 +26,7 @@ This project implements state-of-the-art Graph Neural Networks to integrate mult
 - `GSM7782696-698`: **scRNA-seq** (5', 3', Flex)
 - `GSM7782699`: **Visium CytAssist Spatial Gene Expression**
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Basic Demo (Iris Dataset)
 
@@ -52,7 +52,7 @@ python main_xenium_integration.py
 
 Full multi-modal spatial analysis with tissue-level visualization.
 
-## 🧬 Pipeline Components
+## Pipeline Components
 
 ### Core Models
 
@@ -106,7 +106,7 @@ Full multi-modal spatial analysis with tissue-level visualization.
   - Cell morphology features
 - **scRNA-seq integration** for cell type transfer
 
-## 🔬 Key Features
+## Key Features
 
 ### Spatial Graph Construction
 
@@ -139,7 +139,7 @@ features, names = processor.create_multimodal_features(
 - **Spatial graph connectivity** visualization
 - **Prediction uncertainty maps**
 
-## 📁 File Structure
+## File Structure
 
 ```
 graph_networlk/
@@ -160,7 +160,7 @@ graph_networlk/
     └── spatial_transcriptomics_analysis.html  # Interactive dashboard
 ```
 
-## 🔧 Installation
+## Installation
 
 ```bash
 # Clone repository
@@ -184,7 +184,7 @@ pip install -r requirements.txt
 - **Visualization**: matplotlib, seaborn, plotly
 - **Advanced**: geopandas, shapely (spatial analysis)
 
-## 📊 Expected Results
+## Expected Results
 
 ### Performance Metrics
 
@@ -199,7 +199,7 @@ pip install -r requirements.txt
 3. **Graph Connectivity**: Visualization of spatial neighborhood relationships
 4. **Uncertainty Maps**: Prediction confidence across tissue regions
 
-## 🧪 Usage Examples
+## Usage Examples
 
 ### Example 1: Basic scRNA-seq Analysis
 
@@ -241,7 +241,7 @@ scrna_data = scrna_processor.load_10x_h5("scrna.h5")
 integrated_data = xenium_processor.integrate_with_scrna(scrna_data)
 ```
 
-## 🔬 Scientific Applications
+## Scientific Applications
 
 ### Cancer Research
 
@@ -257,7 +257,7 @@ integrated_data = xenium_processor.integrate_with_scrna(scrna_data)
 - **Scalable preprocessing**: Handle datasets with 100k+ cells
 - **Interactive visualization**: Real-time exploration of spatial patterns
 
-## 🎨 Visualization Gallery
+## Visualization Gallery
 
 The pipeline generates comprehensive visualizations:
 
@@ -267,14 +267,14 @@ The pipeline generates comprehensive visualizations:
 4. **Graph Connectivity**: Sample spatial neighborhood edges
 5. **Uncertainty Maps**: Prediction confidence heatmaps
 
-## 📚 References
+## References
 
 - **Dataset**: Janesick A, Shelansky R, et al. "High resolution mapping of the tumor microenvironment using integrated single-cell, spatial and in situ analysis." _Nature Communications_ 2023.
 - **GEO Accession**: [GSE243280](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE243280)
 - **10x Genomics Xenium**: Spatial gene expression technology
 - **PyTorch Geometric**: Graph neural network framework
 
-## 🚀 Future Enhancements
+## Future Enhancements
 
 - [ ] **Whole slide image integration**: Extract histological features
 - [ ] **KEGG pathway analysis**: Molecular pathway-aware GNNs
