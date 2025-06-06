@@ -48,7 +48,7 @@ class XeniumProcessor:
         matrix_path = os.path.join(data_path, "cell_feature_matrix.h5")
         if os.path.exists(matrix_path):
             self.adata = sc.read_10x_h5(matrix_path)
-            self.adata.var_names_unique()
+            self.adata.var_names_make_unique()
             print(f"Loaded expression matrix: {self.adata.shape}")
         else:
             raise FileNotFoundError(f"Cell feature matrix not found at {matrix_path}")

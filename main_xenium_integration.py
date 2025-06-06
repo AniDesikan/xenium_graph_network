@@ -16,25 +16,26 @@ class SpatialGNN(torch.nn.Module):
     """
     Spatial-aware Graph Neural Network for multi-modal spatial transcriptomics
     """
-    def __init__(self, num_features, num_classes, hidden_dim=128, use_attention=True):
+    def __init__(self, num_features, num_classes, hidden_dim=128, num_heads=4, dropout=0.3, use_attention=True):
         super(SpatialGNN, self).__init__()
         
         self.use_attention = use_attention
+        self.num_heads = num_heads
         
         if use_attention:
             # Use Graph Attention Networks for better spatial modeling
-            self.conv1 = GATConv(num_features, hidden_dim, heads=4, dropout=0.2)
-            self.conv2 = GATConv(hidden_dim * 4, hidden_dim, heads=4, dropout=0.2)
-            self.conv3 = GATConv(hidden_dim * 4, num_classes, heads=1, dropout=0.2)
+            self.conv1 = GATConv(num_features, hidden_dim, heads=num_heads, dropout=dropout)
+            self.conv2 = GATConv(hidden_dim * num_heads, hidden_dim, heads=num_heads, dropout=dropout)
+            self.conv3 = GATConv(hidden_dim * num_heads, num_classes, heads=1, dropout=dropout)
         else:
             # Standard GCN layers
             self.conv1 = GCNConv(num_features, hidden_dim)
             self.conv2 = GCNConv(hidden_dim, hidden_dim // 2)
             self.conv3 = GCNConv(hidden_dim // 2, num_classes)
         
-        self.dropout = torch.nn.Dropout(0.3)
-        self.batch_norm1 = torch.nn.BatchNorm1d(hidden_dim * 4 if use_attention else hidden_dim)
-        self.batch_norm2 = torch.nn.BatchNorm1d(hidden_dim * 4 if use_attention else hidden_dim // 2)
+        self.dropout = torch.nn.Dropout(dropout)
+        self.batch_norm1 = torch.nn.BatchNorm1d(hidden_dim * num_heads if use_attention else hidden_dim)
+        self.batch_norm2 = torch.nn.BatchNorm1d(hidden_dim * num_heads if use_attention else hidden_dim // 2)
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
@@ -299,215 +300,216 @@ def create_integration_html(visualizations, metrics, final_accuracy, dataset_inf
 
 def main():
     """
-    Main integration pipeline for GSE243280 multi-modal spatial transcriptomics
+    Main function to run spatial transcriptomics analysis with Xenium data
     """
-    print("=== GSE243280 Multi-modal Spatial Transcriptomics Analysis ===")
-    
-    # Paths to your downloaded data (you'll need to update these)
-    xenium_data_path = "/path/to/xenium/data"  # Update this path
-    scrna_h5_path = "/Users/ani/mapping_scRNA_GUI/GSM7782697_3p_count_filtered_feature_bc_matrix.h5"
+    print("Starting Spatial Transcriptomics Analysis with Xenium Data")
+    print("=" * 60)
     
     # Create output directory
     output_dir = 'spatial_xenium_visualization'
     os.makedirs(output_dir, exist_ok=True)
     
-    # For demonstration, we'll start with synthetic spatial data
-    # Once you download the Xenium data, uncomment the real data loading section
+    # Initialize processor
+    processor = XeniumProcessor()
     
-    print("Loading demonstration spatial data...")
-    
-    # === SYNTHETIC DATA FOR DEMONSTRATION ===
-    # (Remove this section once you have real Xenium data)
-    n_cells = 5000
-    n_genes = 500
-    n_classes = 6
-    
-    # Create spatial layout mimicking tissue architecture
-    np.random.seed(42)
-    
-    # Create clustered spatial coordinates
-    cluster_centers = np.random.rand(n_classes, 2) * 1000  # Tissue coordinates in μm
-    cell_positions = []
-    cell_labels = []
-    
-    for i, center in enumerate(cluster_centers):
-        n_cells_in_cluster = n_cells // n_classes
-        # Add some cells around each center
-        cluster_cells = np.random.multivariate_normal(
-            center, [[50**2, 0], [0, 50**2]], n_cells_in_cluster
+    try:
+        # Load Xenium data from current directory (files extracted directly here)
+        print("Loading Xenium data...")
+        adata, metadata = processor.load_xenium_data(".")  # Changed from xenium_data_path to current directory
+        
+        # Integrate spatial coordinates
+        print("\nIntegrating spatial coordinates...")
+        processor.integrate_spatial_coordinates()
+        
+        # Preprocess data
+        print("\nPreprocessing spatial data...")
+        adata = processor.preprocess_spatial_data()
+        
+        # Create spatial graph
+        print("\nCreating spatial neighborhood graph...")
+        edge_index = processor.create_spatial_graph(method='radius', radius=100)
+        
+        # Create multi-modal features
+        print("\nCreating multi-modal features...")
+        features, feature_names = processor.create_multimodal_features(
+            use_spatial=True, 
+            use_morphology=True
         )
-        cell_positions.append(cluster_cells)
-        cell_labels.extend([i] * n_cells_in_cluster)
-    
-    spatial_coords = np.vstack(cell_positions)
-    labels = np.array(cell_labels)
-    
-    # Create gene expression data correlated with spatial position and cell type
-    gene_expression = np.random.randn(n_cells, n_genes)
-    
-    # Add spatial gradients and cell-type-specific expression
-    for i in range(n_genes):
-        # Spatial gradient
-        gradient_x = np.sin(spatial_coords[:, 0] / 200) * 0.5
-        gradient_y = np.cos(spatial_coords[:, 1] / 200) * 0.5
         
-        # Cell type specific expression
-        type_effect = np.zeros(n_cells)
-        for cell_type in range(n_classes):
-            mask = labels == cell_type
-            type_effect[mask] = np.random.normal(cell_type - n_classes/2, 0.5)
+        # Create PyTorch data
+        print("\nPreparing data for GNN...")
+        spatial_data, feature_names = processor.create_spatial_torch_data(
+            graph_method='radius',
+            radius=100
+        )
         
-        gene_expression[:, i] += gradient_x + gradient_y + type_effect
-    
-    # Normalize gene expression
-    from sklearn.preprocessing import StandardScaler
-    gene_expression = StandardScaler().fit_transform(gene_expression)
-    
-    # Create spatial graph
-    from sklearn.neighbors import radius_neighbors_graph
-    radius = 75  # μm
-    A = radius_neighbors_graph(spatial_coords, radius=radius, mode='connectivity')
-    
-    # Convert to edge list
-    edge_index = []
-    coo = A.tocoo()
-    for i, j in zip(coo.row, coo.col):
-        edge_index.append([i, j])
-    edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
-    
-    # Create multi-modal features (gene expression + spatial coordinates)
-    spatial_coords_norm = StandardScaler().fit_transform(spatial_coords)
-    features = np.hstack([gene_expression, spatial_coords_norm])
-    
-    # Create PyTorch Geometric data
-    from torch_geometric.data import Data
-    data = Data(
-        x=torch.tensor(features, dtype=torch.float),
-        edge_index=edge_index,
-        pos=torch.tensor(spatial_coords, dtype=torch.float)
-    )
-    
-    labels = torch.tensor(labels, dtype=torch.long)
-    data.y = labels
-    
-    print(f"Created synthetic spatial data:")
-    print(f"- {n_cells} cells with spatial coordinates")
-    print(f"- {n_genes} genes + 2 spatial features = {features.shape[1]} total features")
-    print(f"- {len(edge_index[0])} spatial edges (radius={radius}μm)")
-    print(f"- {n_classes} cell types")
-    
-    # === REAL DATA LOADING (uncomment when you have Xenium data) ===
-    # processor = XeniumProcessor()
-    # adata, cell_metadata = processor.load_xenium_data(xenium_data_path)
-    # processor.integrate_spatial_coordinates()
-    # adata = processor.preprocess_spatial_data()
-    # data, feature_names = processor.create_spatial_torch_data()
-    
-    # # Load scRNA-seq for integration
-    # scrna_processor = scRNASeqProcessor()
-    # scrna_adata = scrna_processor.load_10x_h5(scrna_h5_path)
-    # scrna_adata = scrna_processor.preprocess_data(scrna_adata)
-    # 
-    # # Integrate datasets
-    # integrated_adata = processor.integrate_with_scrna(scrna_adata)
-    
-    # Split data for training/testing
-    n_cells = len(labels)
-    indices = np.arange(n_cells)
-    train_idx, test_idx = train_test_split(indices, test_size=0.2, random_state=42, stratify=labels.numpy())
-    
-    train_mask = torch.zeros(n_cells, dtype=torch.bool)
-    train_mask[train_idx] = True
-    
-    # Initialize spatial GNN model
-    num_features = data.x.shape[1]
-    num_classes = len(torch.unique(labels))
-    model = SpatialGNN(num_features, num_classes, hidden_dim=128, use_attention=True)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-4)
-    
-    print(f"\nTraining Spatial GNN:")
-    print(f"- Model: Spatial GAT with {num_features} features → {num_classes} classes")
-    print(f"- Training cells: {train_mask.sum()}")
-    print(f"- Test cells: {len(test_idx)}")
-    
-    # Storage for visualizations and metrics
-    visualizations = {}
-    metrics = {}
-    
-    # Training loop
-    model.train()
-    for epoch in range(150):
-        optimizer.zero_grad()
-        out = model(data)
-        loss = F.nll_loss(out[train_mask], labels[train_mask])
-        loss.backward()
-        optimizer.step()
+        print(f"Final dataset: {spatial_data.x.shape[0]} cells, {spatial_data.x.shape[1]} features")
+        print(f"Graph edges: {spatial_data.edge_index.shape[1]}")
         
-        # Log every 15 epochs
-        if (epoch + 1) % 15 == 0:
-            print(f'Epoch {epoch+1:03d}, Loss: {loss.item():.4f}')
+        # Add dummy labels for demonstration (in practice, these would be cancer subtypes)
+        n_cells = spatial_data.x.shape[0]
+        # Create realistic spatial labels based on location
+        spatial_coords = adata.obsm['spatial']
         
-        # Visualize every 15 epochs
-        if (epoch + 1) % 15 == 0:
-            model.eval()
+        # Use spatial clustering to create meaningful labels
+        from sklearn.cluster import KMeans
+        kmeans = KMeans(n_clusters=4, random_state=42, n_init=10)
+        spatial_labels = kmeans.fit_predict(spatial_coords)
+        
+        spatial_data.y = torch.tensor(spatial_labels, dtype=torch.long)
+        
+        print(f"Created {len(np.unique(spatial_labels))} spatial clusters as labels")
+        
+        # Split data
+        n_train = int(0.7 * n_cells)
+        n_val = int(0.15 * n_cells)
+        
+        indices = torch.randperm(n_cells)
+        train_mask = torch.zeros(n_cells, dtype=torch.bool)
+        val_mask = torch.zeros(n_cells, dtype=torch.bool)
+        test_mask = torch.zeros(n_cells, dtype=torch.bool)
+        
+        train_mask[indices[:n_train]] = True
+        val_mask[indices[n_train:n_train+n_val]] = True
+        test_mask[indices[n_train+n_val:]] = True
+        
+        spatial_data.train_mask = train_mask
+        spatial_data.val_mask = val_mask
+        spatial_data.test_mask = test_mask
+        
+        # Initialize model
+        model = SpatialGNN(
+            num_features=spatial_data.x.shape[1],
+            num_classes=len(np.unique(spatial_labels)),
+            hidden_dim=64,
+            num_heads=4,
+            dropout=0.3
+        )
+        
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=5e-4)
+        criterion = torch.nn.CrossEntropyLoss()
+        
+        # Training setup
+        model.train()
+        train_losses = []
+        train_accuracies = []
+        val_accuracies = []
+        spatial_visualizations = {}
+        
+        print(f"\nStarting training with {spatial_data.x.shape[1]} features...")
+        print(f"Model architecture: GAT with {model.num_heads} attention heads")
+        
+        # Training loop
+        for epoch in range(150):
+            # Training
+            optimizer.zero_grad()
+            out = model(spatial_data)
+            loss = criterion(out[train_mask], spatial_data.y[train_mask])
+            loss.backward()
+            optimizer.step()
+            
+            # Calculate metrics
             with torch.no_grad():
-                pred = model(data).argmax(dim=1)
-                train_acc = (pred[train_mask] == labels[train_mask]).float().mean()
+                model.eval()
+                pred = model(spatial_data).argmax(dim=1)
                 
-                # Store metrics
-                metrics[epoch+1] = {
-                    'accuracy': train_acc.item(),
-                    'loss': loss.item()
-                }
+                train_acc = (pred[train_mask] == spatial_data.y[train_mask]).float().mean()
+                val_acc = (pred[val_mask] == spatial_data.y[val_mask]).float().mean()
+                
+                train_losses.append(loss.item())
+                train_accuracies.append(train_acc.item())
+                val_accuracies.append(val_acc.item())
+                
+                model.train()
+            
+            # Print progress
+            if (epoch + 1) % 10 == 0:
+                print(f'Epoch {epoch+1:03d} | Loss: {loss.item():.4f} | '
+                      f'Train Acc: {train_acc:.4f} | Val Acc: {val_acc:.4f}')
+            
+            # Create visualizations every 15 epochs
+            if (epoch + 1) % 15 == 0:
+                model.eval()
+                with torch.no_grad():
+                    predictions = model(spatial_data).argmax(dim=1).numpy()
+                    probabilities = torch.softmax(model(spatial_data), dim=1)
+                    uncertainty = 1 - probabilities.max(dim=1)[0].numpy()
                 
                 # Create spatial visualization
-                print(f'Creating spatial visualization for epoch {epoch+1}...')
-                plot_path = create_spatial_visualization(
-                    data, pred.numpy(), labels.numpy(), epoch+1, output_dir
+                viz_data = create_spatial_visualization(
+                    spatial_coords=spatial_coords,
+                    true_labels=spatial_data.y.numpy(),
+                    predictions=predictions,
+                    uncertainty=uncertainty,
+                    edge_index=spatial_data.edge_index,
+                    epoch=epoch+1,
+                    output_dir=output_dir
                 )
-                visualizations[epoch+1] = plot_path
+                
+                spatial_visualizations[epoch+1] = viz_data
+                model.train()
+        
+        # Final evaluation
+        model.eval()
+        with torch.no_grad():
+            pred = model(spatial_data).argmax(dim=1)
+            test_acc = (pred[test_mask] == spatial_data.y[test_mask]).float().mean()
             
-            model.train()
-    
-    # Final evaluation
-    model.eval()
-    with torch.no_grad():
-        pred = model(data).argmax(dim=1)
-        test_mask = torch.zeros(n_cells, dtype=torch.bool)
-        test_mask[test_idx] = True
-        test_acc = (pred[test_mask] == labels[test_mask]).float().mean()
+            final_predictions = pred.numpy()
+            final_probabilities = torch.softmax(model(spatial_data), dim=1)
+            final_uncertainty = 1 - final_probabilities.max(dim=1)[0].numpy()
         
-        # Calculate additional metrics
-        ari_score = adjusted_rand_score(labels[test_mask].numpy(), pred[test_mask].numpy())
+        print(f'\nFinal Test Accuracy: {test_acc:.4f}')
         
-        print(f'\n=== Final Results ===')
-        print(f'Test Accuracy: {test_acc:.4f}')
-        print(f'Adjusted Rand Index: {ari_score:.4f}')
-    
-    # Create dataset info for HTML
-    dataset_info = {
-        'n_cells': n_cells,
-        'n_genes': n_genes,
-        'spatial_range_x': f"{spatial_coords[:, 0].min():.0f}-{spatial_coords[:, 0].max():.0f}",
-        'spatial_range_y': f"{spatial_coords[:, 1].min():.0f}-{spatial_coords[:, 1].max():.0f}"
-    }
-    
-    # Create and save HTML visualization
-    print('\nCreating comprehensive HTML visualization...')
-    html_content = create_integration_html(visualizations, metrics, test_acc.item(), dataset_info)
-    
-    html_path = os.path.join(output_dir, 'spatial_transcriptomics_analysis.html')
-    with open(html_path, 'w') as f:
-        f.write(html_content)
-    
-    print(f'Spatial analysis saved to: {html_path}')
-    
-    # Open in browser
-    try:
-        webbrowser.open(f'file://{os.path.abspath(html_path)}')
-        print('Opening spatial transcriptomics visualization in your browser...')
-    except:
-        print('Could not open browser automatically. Please open the HTML file manually.')
+        # Create final comprehensive visualization
+        print("Creating final spatial visualization...")
+        final_viz = create_spatial_visualization(
+            spatial_coords=spatial_coords,
+            true_labels=spatial_data.y.numpy(),
+            predictions=final_predictions,
+            uncertainty=final_uncertainty,
+            edge_index=spatial_data.edge_index,
+            epoch='Final',
+            output_dir=output_dir
+        )
+        
+        # Create interactive HTML dashboard
+        print("Creating interactive HTML dashboard...")
+        html_content = create_integration_html(
+            spatial_visualizations,
+            {e: {'accuracy': a, 'loss': l} for e, a, l in zip(spatial_visualizations.keys(), train_accuracies, train_losses)},
+            test_acc.item(),
+            {
+                'n_cells': n_cells,
+                'n_genes': len(feature_names),
+                'spatial_range_x': f"{spatial_coords[:, 0].min():.0f}-{spatial_coords[:, 0].max():.0f}",
+                'spatial_range_y': f"{spatial_coords[:, 1].min():.0f}-{spatial_coords[:, 1].max():.0f}"
+            }
+        )
+        
+        # Save HTML dashboard
+        html_path = os.path.join(output_dir, 'spatial_transcriptomics_analysis.html')
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        print(f"Analysis complete! Results saved to: {output_dir}/")
+        print(f"Interactive dashboard: {html_path}")
+        
+        # Open in browser
+        try:
+            webbrowser.open(f'file://{os.path.abspath(html_path)}')
+            print("Opening interactive dashboard in browser...")
+        except:
+            print("Could not open browser automatically. Please open the HTML file manually.")
+        
+    except Exception as e:
+        print(f"Error during analysis: {str(e)}")
+        print("Please check that all required Xenium files are present:")
+        print("- cell_feature_matrix.h5")
+        print("- cells.parquet")
+        print("- transcripts.parquet")
+        print("- morphology.ome.tif")
+        raise
 
 if __name__ == "__main__":
     main() 
